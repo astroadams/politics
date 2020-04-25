@@ -119,8 +119,8 @@ if plot:
             locationmode = 'USA-states',
             colorscale = 'RdBu',
             zmid = 0,
-            zmin = -30,
-            zmax = 30,
+            zmin = 30,
+            zmax = -30,
             text = df[df['year']==year][radio].map('{:,.1f}%'.format),
             hoverinfo='location+text',
             colorbar = go.choropleth.ColorBar(
@@ -213,8 +213,8 @@ if plot:
                 locationmode = 'USA-states',
                 colorscale = 'RdBu',
                 zmid = 0,
-                zmin = -30,
-                zmax = 30,
+                zmin = 30,
+                zmax = -30,
                 text = df[df['year']==year][radio].map('{:,.1f}%'.format),
                 hoverinfo='location+text',
                 colorbar = go.choropleth.ColorBar(
