@@ -118,14 +118,15 @@ if plot:
             z = df[df['year']==year][radio],
             locationmode = 'USA-states',
             colorscale = 'RdBu',
+            reversescale = True,  
             zmid = 0,
-            zmin = 30,
-            zmax = -30,
+            zmin = -30,
+            zmax = 30,
             text = df[df['year']==year][radio].map('{:,.1f}%'.format),
             hoverinfo='location+text',
             colorbar = go.choropleth.ColorBar(
                     title = 'Dem Margin'))]
-        
+ 
     layout = go.Layout(
         #title = go.layout.Title(
         #    text = '2016 Presidential Election'
@@ -212,9 +213,10 @@ if plot:
                 z = df[df['year']==year][radio],
                 locationmode = 'USA-states',
                 colorscale = 'RdBu',
+                reversescale = True, 
                 zmid = 0,
-                zmin = 30,
-                zmax = -30,
+                zmin = -30,
+                zmax = 30,
                 text = df[df['year']==year][radio].map('{:,.1f}%'.format),
                 hoverinfo='location+text',
                 colorbar = go.choropleth.ColorBar(
