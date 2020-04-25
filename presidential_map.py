@@ -105,7 +105,7 @@ if plot:
     #        {"name": "viewport", "content": "width=device-width, initial-scale=0.9"}
     #])
     app = dash.Dash(__name__)
-    #app = dash.Dash()
+    server = app.server
     
     df = pd.read_csv('margins.csv')
     years = df['year'].unique()
