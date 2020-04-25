@@ -41,7 +41,7 @@ import pandas as pd
 
 prep = True
 plot = True
-pvi_plot = True
+pvi_plot = False
 
 if prep:
     df = pd.read_csv('1976-2016-president.csv')
@@ -52,7 +52,7 @@ if prep:
     years = df['year'].unique()
     
     f = open('margins.csv','w')
-    f.write('year,state,electoral_votes,margin,pvi\n')
+    f.write('year,state,electoral_votes,margin,margin_text,pvi,pvi_text\n')
     for year in years:
         dfy = df[df['year']==year]
         dtotal = dfy[dfy['party'].str.contains('democrat').ffill(0)]['candidatevotes'].sum()
@@ -68,7 +68,18 @@ if prep:
             margin = (rep/total - dem/total) * 100
             pvi = margin - national_margin
             ev = ev_df[ev_df['State']==state][census_year].values[0]+2 # +2 to convert from # congressional seats to # of electoral votes
-            f.write('%d,%s,%d,%f,%f\n' % (year, state, ev, margin, pvi))
+            margin_text = margin.round(1)
+            if margin > 0:
+                margin_party = 'R+'
+            else:
+                margin_party = 'D+'
+            margin_text = margin_party+str(abs(margin).round(1))
+            if pvi > 0:
+                pvi_party = 'R+'
+            else:
+                pvi_party = 'D+'
+            pvi_text = pvi_party+str(abs(pvi).round(1))
+            f.write('%d,%s,%d,%f,%s,%f,%s\n' % (year, state, ev, margin, margin_text, pvi, pvi_text))
     f.close()
 
 if pvi_plot:
@@ -77,7 +88,8 @@ if pvi_plot:
     df = pd.read_csv('margins.csv')
     years = df['year'].unique()
     norm = Normalize(vmin=min(years), vmax=max(years))
-    cm = plt.cm.get_cmap('RdYlBu')
+    cm = plt.cm.get_cmap('Greens')
+    plt.figure()
     for year in years:
         dfy = df[df['year']==year]
         # add end points for CDF
@@ -87,10 +99,15 @@ if pvi_plot:
         # calculate cumulative distribution function
         color = cm(norm(year))
         print(color)
-        plt.hist(sdfy['pvi'], cumulative=True, histtype='step', weights=sdfy['electoral_votes']/269., color=color, range=(-100,100), bins=2201, alpha=0.8)
-        plt.plot([-100,100],[1,1], '-', color='black', linewidth=1)
-        plt.xlim(-10,10)
-        plt.ylim(0.75,1.25)
+        #plt.hist(sdfy['pvi'], cumulative=True, histtype='step', weights=sdfy['electoral_votes']/269., color=color, range=(-100,100), bins=2201, alpha=0.8)
+        plt.hist(sdfy['pvi'], cumulative=True, histtype='step', weights=sdfy['electoral_votes'], color=color, range=(-100,100), bins=2201, alpha=0.8)
+        #plt.plot([-100,100],[1,1], '-', color='black', linewidth=1)
+        plt.plot([-100,100],[269,269], '-', color='black', linewidth=1)
+        #plt.xlim(-10,10)
+        #plt.ylim(0.75,1.25)
+        plt.xlim(-50,50)
+        plt.ylim(0,538)
+    plt.savefig('hist.pdf')
     
 if plot:
     import dash
@@ -122,11 +139,15 @@ if plot:
             zmid = 0,
             zmin = -30,
             zmax = 30,
-            text = df[df['year']==year][radio].map('{:,.1f}%'.format),
+            text = df[df['year']==year][radio+'_text'],
             hoverinfo='location+text',
             colorbar = go.choropleth.ColorBar(
-                    title = 'Dem Margin'))]
+                    title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
+                    ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
  
+    #df[df['year']==year][radio].to_string().replace('-','D+').replace(' 0',' R+0').replace(' 1',' R+1').replace(' 2',' R+2').replace(' 3',' R+3').replace(' 4',' R+4')
+    #df[df['year']==year][radio].round(1).astype(str)
+
     layout = go.Layout(
         #title = go.layout.Title(
         #    text = '2016 Presidential Election'
@@ -217,10 +238,11 @@ if plot:
                 zmid = 0,
                 zmin = -30,
                 zmax = 30,
-                text = df[df['year']==year][radio].map('{:,.1f}%'.format),
+                text = df[df['year']==year][radio+'_text'],
                 hoverinfo='location+text',
                 colorbar = go.choropleth.ColorBar(
-                        title = 'Margin'))]
+                    title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
+                    ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
             
         layout = go.Layout(
             #title = go.layout.Title(
@@ -242,6 +264,6 @@ if plot:
         return figure
 
                 
-if __name__ == '__main__':
+if __name__ == '__main__' and plot == True:
     app.run_server(debug=True)
     
