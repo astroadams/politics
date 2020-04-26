@@ -121,7 +121,7 @@ def gen_map(year, radio):
                 type = 'albers usa'
             )
         ),
-        height=700
+        height=550
     )
     figure={
         'data': data,
@@ -282,10 +282,12 @@ if plot:
                 ]
             ),
             html.Div([
+                html.P("Cumulative distribution of electoral votes (relative to a 269-269 tie) by election year: The year selected by the top slider bar is highlighted."),
                 dcc.Graph(
                     id='histogram',
                     figure=gen_hist(year,radio)
                 ),
+                html.P("State trends: Hovering over a state on the map above will highlight the state in the figure below."),
                 dcc.Graph(
                     id='state-trends',
                     figure=gen_state_trend_plot(radio, '')
