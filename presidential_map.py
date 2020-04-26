@@ -38,10 +38,107 @@ Take-aways:
 """
 
 import pandas as pd
+import plotly.express as px
 
-prep = True
+def gen_state_trend_plot(radio, hover_data):
+    try:
+        GUI_state = hover_data['points'][0]['location']
+    except:
+        GUI_state = 'VA'
+    data = []
+    for state in states:
+        dfs = df[df['state']==state]
+        sdfs = dfs.sort_values(by='year')
+        text = dfs['pvi_text'],
+        #data.append(go.Scatter(x=sdfs['year'], y=sdfs[radio], mode='lines', name=state, text=text, hoverinfo='text'))
+        if state == GUI_state: opacity = 1
+        else: opacity = 0.2
+        data.append(go.Scatter(x=sdfs['year'], y=sdfs[radio], mode='lines', name=state, opacity=opacity))
+    if radio == 'margin': radio_text = 'Margin of Victory'
+    elif radio == 'pvi': radio_text = 'Partisan Lean'
+    else: raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
+    layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio_text, "range":[-40,40]})
+    #layout = go.Layout(yaxis={"range": [-40,40]})
+    return {"data" : data, "layout" : layout}
+
+def alternate2_gen_state_trend_plot():
+    state_trend_plot = go.Figure()
+    for state in states:
+        dfs = df[df['state']==state]
+        sdfs = dfs.sort_values(by='year')
+        state_trend_plot.add_trace(go.Scatter(x=sdfs['year'], y=sdfs['pvi'], mode='lines', name=state))
+    return state_trend_plot
+
+def alternate_gen_state_trend_plot(radio):
+    fig = px.line(df, x="year", y=radio, color="state")
+    fig.layout.yaxis.range = [-40,40]    
+    return fig
+
+def gen_hist(GUI_year, radio):
+    data = []
+    for year in years:
+        dfy = df[df['year']==year]
+        sdfy = dfy.sort_values(by=radio)
+        cumsum = -269
+        xs = [-100]
+        ys = [cumsum]
+        for i in range(len(sdfy[radio].values)):
+            xs.append(sdfy[radio].values[i])
+            ys.append(cumsum)
+            cumsum += sdfy['electoral_votes'].values[i]
+            xs.append(sdfy[radio].values[i])
+            ys.append(cumsum)
+        xs.append(100)
+        ys.append(ys[0]+538)
+        if year == GUI_year: opacity = 1
+        else: opacity = 0.2
+        data.append(go.Scatter(x=xs, y=ys, mode='lines', name=str(year), opacity=opacity))
+    if radio == 'margin': radio_text = 'Margin of Victory'
+    elif radio == 'pvi': radio_text = 'Partisan Lean'
+    else: raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
+    layout = go.Layout(xaxis={"title":radio_text, "range": [-40,40]}, yaxis={"title":"Cumulative # of Electoral Votes"})
+    return {"data" : data, "layout" : layout}
+
+def gen_map(year, radio):
+    data = [go.Choropleth(
+            locations = df[df['year']==year]['state'],
+            z = df[df['year']==year][radio],
+            locationmode = 'USA-states',
+            colorscale = 'RdBu',
+            reversescale = True, 
+            zmid = 0,
+            zmin = -30,
+            zmax = 30,
+            text = df[df['year']==year][radio+'_text'],
+            hoverinfo='location+text',
+            colorbar = go.choropleth.ColorBar(
+                title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
+                ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
+        
+    layout = go.Layout(
+        #title = go.layout.Title(
+        #    text = '2016 Presidential Election'
+        #),
+        geo = go.layout.Geo(
+            showframe = False,
+            showcoastlines = False,
+            projection = go.layout.geo.Projection(
+                type = 'albers usa'
+            )
+        ),
+        height=700
+    )
+    figure={
+        'data': data,
+        'layout': layout,
+        }
+    return figure
+
+
+prep = False
 plot = True
 pvi_plot = False
+plot_state_trend = True
 
 if prep:
     df = pd.read_csv('1976-2016-president.csv')
@@ -108,7 +205,18 @@ if pvi_plot:
         plt.xlim(-50,50)
         plt.ylim(0,538)
     plt.savefig('hist.pdf')
-    
+
+if plot_state_trend:
+    import matplotlib.pyplot as plt
+    df = pd.read_csv('margins.csv')
+    states = df['state'].unique()
+    plt.figure()
+    for state in states:
+        dfs = df[df['state']==state]
+        sdfs = dfs.sort_values(by='year')
+        plt.plot(sdfs['year'], sdfs['pvi'], '-')
+    plt.savefig('state_trends.pdf')
+
 if plot:
     import dash
     import dash_core_components as dcc
@@ -126,42 +234,35 @@ if plot:
     
     df = pd.read_csv('margins.csv')
     years = df['year'].unique()
+    states = df['state'].unique()
 
     year = 2016
     radio = 'margin'
-    # Map
-    data = [go.Choropleth(
-            locations = df[df['year']==year]['state'],
-            z = df[df['year']==year][radio],
-            locationmode = 'USA-states',
-            colorscale = 'RdBu',
-            reversescale = True,  
-            zmid = 0,
-            zmin = -30,
-            zmax = 30,
-            text = df[df['year']==year][radio+'_text'],
-            hoverinfo='location+text',
-            colorbar = go.choropleth.ColorBar(
-                    title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
-                    ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
- 
-    #df[df['year']==year][radio].to_string().replace('-','D+').replace(' 0',' R+0').replace(' 1',' R+1').replace(' 2',' R+2').replace(' 3',' R+3').replace(' 4',' R+4')
-    #df[df['year']==year][radio].round(1).astype(str)
+    # data = [go.Choropleth(
+    #         locations = df[df['year']==year]['state'],
+    #         z = df[df['year']==year][radio],
+    #         locationmode = 'USA-states',
+    #         colorscale = 'RdBu',
+    #         reversescale = True,  
+    #         zmid = 0,
+    #         zmin = -30,
+    #         zmax = 30,
+    #         text = df[df['year']==year][radio+'_text'],
+    #         hoverinfo='location+text',
+    #         colorbar = go.choropleth.ColorBar(
+    #                 title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
+    #                 ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
 
-    layout = go.Layout(
-        #title = go.layout.Title(
-        #    text = '2016 Presidential Election'
-        #),
-        geo = go.layout.Geo(
-            showframe = False,
-            showcoastlines = False,
-            projection = go.layout.geo.Projection(
-                type = 'albers usa'
-            )
-        ),
-        height=900
-    )
-    
+    # layout = go.Layout(
+    #     geo = go.layout.Geo(
+    #         showframe = False,
+    #         showcoastlines = False,
+    #         projection = go.layout.geo.Projection(
+    #             type = 'albers usa'
+    #         )
+    #     ),
+    #     height=900
+    #)
     
     app.layout = html.Div(
         id = "root",
@@ -183,7 +284,7 @@ if plot:
                         id="years-slider",
                         min=min(years),
                         max=max(years),
-                        value=min(years),
+                        value=max(years),
                         marks={str(year): str(year) for year in years}, 
                         step=None
                     ),
@@ -206,22 +307,48 @@ if plot:
                     ),
                     dcc.Graph(
                         id='choropleth',
-                        figure={
-                            'data': data,
-                            'layout': layout
-                        }
+                        figure=gen_map(year,radio)
                     )
                 ]
-            )
+            ),
+            html.Div([
+                dcc.Graph(
+                    id='histogram',
+                    figure=gen_hist(year,radio)
+                ),
+                dcc.Graph(
+                    id='state-trends',
+                    figure=gen_state_trend_plot(radio, '')
+                )
+            ], style={'columnCount': 2})
         ]
     )
 
 
-    @app.callback(Output("heatmap-title", "children"), [Input("years-slider", "value")])
-    def update_map_title(year):
-        return "Heatmap of election margins in {0}".format(
-            year
-        )
+    @app.callback(Output("heatmap-title", "children"), [Input("years-slider", "value"), Input("radio", "value")])
+    def update_map_title(year, radio):
+        if radio == 'pvi':
+            return "Heatmap of partisan leans in %d" % (year)
+        elif radio == 'margin':
+            return "Heatmap of election margins in %d" % (year)
+        else:
+            raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
+
+
+    @app.callback(Output("histogram", "figure"), 
+        [Input("years-slider", "value"), Input("radio", "value")], 
+        [State("histogram", "figure")]
+    )
+    def update_histogram(year, radio, figure):
+        return gen_hist(year, radio)
+
+    @app.callback(Output("state-trends", "figure"), 
+        [Input("radio", "value"), Input("choropleth", "hoverData")], 
+        [State("state-trends", "figure")]
+    )
+    def update_state_trends(radio, hover_data, figure):
+        return gen_state_trend_plot(radio, hover_data)
+
 
     @app.callback(Output("choropleth", "figure"), 
         [Input("years-slider", "value"),
@@ -229,39 +356,7 @@ if plot:
         [State("choropleth", "figure")]
     )
     def display_map(year, radio, figure):
-        data = [go.Choropleth(
-                locations = df[df['year']==year]['state'],
-                z = df[df['year']==year][radio],
-                locationmode = 'USA-states',
-                colorscale = 'RdBu',
-                reversescale = True, 
-                zmid = 0,
-                zmin = -30,
-                zmax = 30,
-                text = df[df['year']==year][radio+'_text'],
-                hoverinfo='location+text',
-                colorbar = go.choropleth.ColorBar(
-                    title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
-                    ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
-            
-        layout = go.Layout(
-            #title = go.layout.Title(
-            #    text = '2016 Presidential Election'
-            #),
-            geo = go.layout.Geo(
-                showframe = False,
-                showcoastlines = False,
-                projection = go.layout.geo.Projection(
-                    type = 'albers usa'
-                )
-            ),
-            height=900
-        )
-        figure={
-            'data': data,
-            'layout': layout,
-            }
-        return figure
+        return gen_map(year, radio)
 
                 
 if __name__ == '__main__' and plot == True:
