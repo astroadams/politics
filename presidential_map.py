@@ -44,7 +44,7 @@ def gen_state_trend_plot(radio, hover_data):
     try:
         GUI_state = hover_data['points'][0]['location']
     except:
-        GUI_state = 'VA'
+        GUI_state = 'CA'
     data = []
     for state in states:
         dfs = df[df['state']==state]
