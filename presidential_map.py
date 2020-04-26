@@ -29,7 +29,7 @@ Plan:
     
 Take-aways:
     1. Electoral college worked to Dem's advantage in 2012, but disadvantage
-       in 2000, 201
+       in 2000, 2016
     2. Sunbelt moving leftward, but gains won't be reflected in electoral 
        college for quite some time (2024?)
     3. Midwest really does have outsized importance.  If its rightward shift in 
@@ -49,15 +49,12 @@ def gen_state_trend_plot(radio, hover_data):
     for state in states:
         dfs = df[df['state']==state]
         sdfs = dfs.sort_values(by='year')
-        text = dfs['pvi_text'],
+        #text = dfs[radio+' text'],
         #data.append(go.Scatter(x=sdfs['year'], y=sdfs[radio], mode='lines', name=state, text=text, hoverinfo='text'))
         if state == GUI_state: opacity = 1
         else: opacity = 0.2
         data.append(go.Scatter(x=sdfs['year'], y=sdfs[radio], mode='lines', name=state, opacity=opacity))
-    if radio == 'margin': radio_text = 'Margin of Victory'
-    elif radio == 'pvi': radio_text = 'Partisan Lean'
-    else: raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
-    layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio_text, "range":[-40,40]})
+    layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio, "range":[-40,40]})
     #layout = go.Layout(yaxis={"range": [-40,40]})
     return {"data" : data, "layout" : layout}
 
@@ -66,7 +63,7 @@ def alternate2_gen_state_trend_plot():
     for state in states:
         dfs = df[df['state']==state]
         sdfs = dfs.sort_values(by='year')
-        state_trend_plot.add_trace(go.Scatter(x=sdfs['year'], y=sdfs['pvi'], mode='lines', name=state))
+        state_trend_plot.add_trace(go.Scatter(x=sdfs['year'], y=sdfs['Partisan Lean'], mode='lines', name=state))
     return state_trend_plot
 
 def alternate_gen_state_trend_plot(radio):
@@ -93,27 +90,25 @@ def gen_hist(GUI_year, radio):
         if year == GUI_year: opacity = 1
         else: opacity = 0.2
         data.append(go.Scatter(x=xs, y=ys, mode='lines', name=str(year), opacity=opacity))
-    if radio == 'margin': radio_text = 'Margin of Victory'
-    elif radio == 'pvi': radio_text = 'Partisan Lean'
-    else: raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
-    layout = go.Layout(xaxis={"title":radio_text, "range": [-40,40]}, yaxis={"title":"Cumulative # of Electoral Votes"})
+    layout = go.Layout(xaxis={"title":radio, "range": [-40,40]}, yaxis={"title":"Cumulative # of Electoral Votes"})
     return {"data" : data, "layout" : layout}
 
 def gen_map(year, radio):
+    extra_space = '           '
     data = [go.Choropleth(
             locations = df[df['year']==year]['state'],
             z = df[df['year']==year][radio],
             locationmode = 'USA-states',
             colorscale = 'RdBu',
-            reversescale = True, 
+            reversescale = False, 
             zmid = 0,
             zmin = -30,
             zmax = 30,
-            text = df[df['year']==year][radio+'_text'],
+            text = df[df['year']==year][radio+' text'],
             hoverinfo='location+text',
             colorbar = go.choropleth.ColorBar(
                 title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
-                ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
+                ticktext=['R+30'+extra_space,'R+20'+extra_space,'R+10'+extra_space,'Even'+extra_space,'D+10'+extra_space,'D+20'+extra_space,'D+30'+extra_space]))]
         
     layout = go.Layout(
         #title = go.layout.Title(
@@ -135,7 +130,7 @@ def gen_map(year, radio):
     return figure
 
 
-prep = False
+prep = True
 plot = True
 pvi_plot = False
 plot_state_trend = True
@@ -149,32 +144,32 @@ if prep:
     years = df['year'].unique()
     
     f = open('margins.csv','w')
-    f.write('year,state,electoral_votes,margin,margin_text,pvi,pvi_text\n')
+    f.write('year,state,electoral_votes,Margin of Victory,Margin of Victory text,Partisan Lean,Partisan Lean text\n')
     for year in years:
         dfy = df[df['year']==year]
         dtotal = dfy[dfy['party'].str.contains('democrat').ffill(0)]['candidatevotes'].sum()
         rtotal = dfy[dfy['party']=='republican']['candidatevotes'].sum()
         total = dfy['candidatevotes'].sum()
-        national_margin = (rtotal/total-dtotal/total) * 100
+        national_margin = (dtotal/total - rtotal/total) * 100
         # census year = max year <= election year
         census_year = ev_df.columns[1:][ev_df.columns[1:].astype(float)<=year][-1]
         for state in states:
             dem = dfy[(dfy['state_po']==state) & (dfy['party'].str.contains('democrat'))]['candidatevotes'].values[0]
             rep = dfy[(dfy['state_po']==state) & (dfy['party']=='republican')]['candidatevotes'].values[0]
             total = dfy[(dfy['state_po']==state) & (dfy['party']=='republican')]['totalvotes'].values[0]
-            margin = (rep/total - dem/total) * 100
+            margin = (dem/total - rep/total) * 100
             pvi = margin - national_margin
             ev = ev_df[ev_df['State']==state][census_year].values[0]+2 # +2 to convert from # congressional seats to # of electoral votes
             margin_text = margin.round(1)
             if margin > 0:
-                margin_party = 'R+'
-            else:
                 margin_party = 'D+'
+            else:
+                margin_party = 'R+'
             margin_text = margin_party+str(abs(margin).round(1))
             if pvi > 0:
-                pvi_party = 'R+'
-            else:
                 pvi_party = 'D+'
+            else:
+                pvi_party = 'R+'
             pvi_text = pvi_party+str(abs(pvi).round(1))
             f.write('%d,%s,%d,%f,%s,%f,%s\n' % (year, state, ev, margin, margin_text, pvi, pvi_text))
     f.close()
@@ -192,12 +187,12 @@ if pvi_plot:
         # add end points for CDF
         #dfy = dfy.append({'year':year, 'state':'fake', 'pvi':-100, 'electoral_votes':0}, ignore_index=True)
         #dfy = dfy.append({'year':year, 'state':'fake', 'pvi':100, 'electoral_votes':0}, ignore_index=True)
-        sdfy = dfy.sort_values(by='pvi')
+        sdfy = dfy.sort_values(by='Partisan Lean')
         # calculate cumulative distribution function
         color = cm(norm(year))
         print(color)
         #plt.hist(sdfy['pvi'], cumulative=True, histtype='step', weights=sdfy['electoral_votes']/269., color=color, range=(-100,100), bins=2201, alpha=0.8)
-        plt.hist(sdfy['pvi'], cumulative=True, histtype='step', weights=sdfy['electoral_votes'], color=color, range=(-100,100), bins=2201, alpha=0.8)
+        plt.hist(sdfy['Partisan Lean'], cumulative=True, histtype='step', weights=sdfy['electoral_votes'], color=color, range=(-100,100), bins=2201, alpha=0.8)
         #plt.plot([-100,100],[1,1], '-', color='black', linewidth=1)
         plt.plot([-100,100],[269,269], '-', color='black', linewidth=1)
         #plt.xlim(-10,10)
@@ -214,7 +209,7 @@ if plot_state_trend:
     for state in states:
         dfs = df[df['state']==state]
         sdfs = dfs.sort_values(by='year')
-        plt.plot(sdfs['year'], sdfs['pvi'], '-')
+        plt.plot(sdfs['year'], sdfs['Partisan Lean'], '-')
     plt.savefig('state_trends.pdf')
 
 if plot:
@@ -237,32 +232,7 @@ if plot:
     states = df['state'].unique()
 
     year = 2016
-    radio = 'margin'
-    # data = [go.Choropleth(
-    #         locations = df[df['year']==year]['state'],
-    #         z = df[df['year']==year][radio],
-    #         locationmode = 'USA-states',
-    #         colorscale = 'RdBu',
-    #         reversescale = True,  
-    #         zmid = 0,
-    #         zmin = -30,
-    #         zmax = 30,
-    #         text = df[df['year']==year][radio+'_text'],
-    #         hoverinfo='location+text',
-    #         colorbar = go.choropleth.ColorBar(
-    #                 title = radio, tickvals=[-30,-20,-10,0,10,20,30], 
-    #                 ticktext=['D+30','D+20','D+10','Even','R+10','R+20','R+30']))]
-
-    # layout = go.Layout(
-    #     geo = go.layout.Geo(
-    #         showframe = False,
-    #         showcoastlines = False,
-    #         projection = go.layout.geo.Projection(
-    #             type = 'albers usa'
-    #         )
-    #     ),
-    #     height=900
-    #)
+    radio = 'Partisan Lean'
     
     app.layout = html.Div(
         id = "root",
@@ -292,10 +262,10 @@ if plot:
                     dcc.RadioItems(
                         id="radio",
                         options=[
-                            {'label': 'Margin', 'value': 'margin'},
-                            {'label': 'Partisan Lean', 'value': 'pvi'}
+                            {'label': 'Margin of Victory', 'value': 'Margin of Victory'},
+                            {'label': 'Partisan Lean', 'value': 'Partisan Lean'}
                         ],
-                        value='margin'
+                        value='Margin of Victory'
                     ),
                 ]
             ),
@@ -327,13 +297,7 @@ if plot:
 
     @app.callback(Output("heatmap-title", "children"), [Input("years-slider", "value"), Input("radio", "value")])
     def update_map_title(year, radio):
-        if radio == 'pvi':
-            return "Heatmap of partisan leans in %d" % (year)
-        elif radio == 'margin':
-            return "Heatmap of election margins in %d" % (year)
-        else:
-            raise ValueError('Unrecognized radio value %s --- supported values are [pvi, margin]' % (radio))
-
+        return "Heatmap of %s in %d" % (radio, year)
 
     @app.callback(Output("histogram", "figure"), 
         [Input("years-slider", "value"), Input("radio", "value")], 
