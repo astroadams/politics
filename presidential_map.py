@@ -54,9 +54,10 @@ def gen_state_trend_plot(radio, hover_data):
         if state == GUI_state: opacity = 1
         else: opacity = 0.2
         data.append(go.Scatter(x=sdfs['year'], y=sdfs[radio], mode='lines', name=state, opacity=opacity))
-    layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio, "range":[-40,40]})
+    layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio, "range":[-40,40], "tickvals":[-40,-20,0,20,40], "ticktext":["R+40","R+20","Even","D+20","D+40"]})
     #layout = go.Layout(yaxis={"range": [-40,40]})
     return {"data" : data, "layout" : layout}
+
 
 def alternate2_gen_state_trend_plot():
     state_trend_plot = go.Figure()
@@ -90,7 +91,7 @@ def gen_hist(GUI_year, radio):
         if year == GUI_year: opacity = 1
         else: opacity = 0.2
         data.append(go.Scatter(x=xs, y=ys, mode='lines', name=str(year), opacity=opacity))
-    layout = go.Layout(xaxis={"title":radio, "range": [-40,40]}, yaxis={"title":"Cumulative # of Electoral Votes"})
+    layout = go.Layout(xaxis={"title":radio, "range": [-40,40], "tickvals":[-40,-20,0,20,40], "ticktext":["R+40","R+20","Even","D+20","D+40"]}, yaxis={"title":"Cumulative # of Electoral Votes"})
     return {"data" : data, "layout" : layout}
 
 def gen_map(year, radio):
@@ -136,7 +137,7 @@ pvi_plot = False
 plot_state_trend = True
 
 if prep:
-    df = pd.read_csv('1976-2016-president.csv')
+    df = pd.read_csv('1976-2020-president.csv')
     ev_df = pd.read_csv('electoral_vote_apportionment.csv')
     # state, code, %margin D, nD, nR, nT
     
@@ -147,16 +148,16 @@ if prep:
     f.write('year,state,electoral_votes,Margin of Victory,Margin of Victory text,Partisan Lean,Partisan Lean text\n')
     for year in years:
         dfy = df[df['year']==year]
-        dtotal = dfy[dfy['party'].str.contains('democrat').ffill(0)]['candidatevotes'].sum()
-        rtotal = dfy[dfy['party']=='republican']['candidatevotes'].sum()
+        dtotal = dfy[dfy['party_simplified'].str.contains('DEMOCRAT').ffill(0)]['candidatevotes'].sum()
+        rtotal = dfy[dfy['party_simplified']=='REPUBLICAN']['candidatevotes'].sum()
         total = dfy['candidatevotes'].sum()
         national_margin = (dtotal/total - rtotal/total) * 100
         # census year = max year <= election year
         census_year = ev_df.columns[1:][ev_df.columns[1:].astype(float)<=year][-1]
         for state in states:
-            dem = dfy[(dfy['state_po']==state) & (dfy['party'].str.contains('democrat'))]['candidatevotes'].values[0]
-            rep = dfy[(dfy['state_po']==state) & (dfy['party']=='republican')]['candidatevotes'].values[0]
-            total = dfy[(dfy['state_po']==state) & (dfy['party']=='republican')]['totalvotes'].values[0]
+            dem = dfy[(dfy['state_po']==state) & (dfy['party_simplified'].str.contains('DEMOCRAT'))]['candidatevotes'].values[0]
+            rep = dfy[(dfy['state_po']==state) & (dfy['party_simplified']=='REPUBLICAN')]['candidatevotes'].values[0]
+            total = dfy[(dfy['state_po']==state) & (dfy['party_simplified']=='REPUBLICAN')]['totalvotes'].values[0]
             margin = (dem/total - rep/total) * 100
             pvi = margin - national_margin
             ev = ev_df[ev_df['State']==state][census_year].values[0]+2 # +2 to convert from # congressional seats to # of electoral votes
@@ -231,7 +232,7 @@ if plot:
     years = df['year'].unique()
     states = df['state'].unique()
 
-    year = 2016
+    year = 2020
     radio = 'Partisan Lean'
     
     app.layout = html.Div(
@@ -272,7 +273,7 @@ if plot:
             html.Div(
                 id="heatmap-container",
                 children=[
-                    html.P("Heatmap of election margins in 2016",
+                    html.P("Heatmap of election margins in 2020",
                         id="heatmap-title"
                     ),
                     dcc.Graph(
