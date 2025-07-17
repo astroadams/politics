@@ -79,6 +79,13 @@ def create_figure(geojson_data, zoom_level='national', center_lat=39.8, center_l
     if 'pct_dem_lead' in geojson_data.columns:
         color_col = 'pct_dem_lead'
         hover_data = ['votes_dem', 'votes_rep'] if 'votes_dem' in geojson_data.columns else []
+        
+        # Add names to hover data if available
+        if 'state_name' in geojson_data.columns:
+            hover_data.append('state_name')
+        if 'county_name' in geojson_data.columns:
+            hover_data.append('county_name')
+            
     elif 'state_fips' in geojson_data.columns:
         color_col = 'state_fips'
     elif 'county_fips' in geojson_data.columns:
@@ -96,7 +103,14 @@ def create_figure(geojson_data, zoom_level='national', center_lat=39.8, center_l
         hover_data=hover_data + (['state_fips'] if 'state_fips' in geojson_data.columns else []),
         color_continuous_scale='RdBu' if color_col == 'pct_dem_lead' else 'Viridis',
         color_continuous_midpoint=0 if color_col == 'pct_dem_lead' else None,
-        labels={'pct_dem_lead': 'Dem Lead %', 'state_fips': 'State FIPS', 'votes_dem': 'Dem Votes', 'votes_rep': 'Rep Votes'},
+        labels={
+            'pct_dem_lead': 'Dem Lead %', 
+            'state_fips': 'State FIPS', 
+            'votes_dem': 'Dem Votes', 
+            'votes_rep': 'Rep Votes',
+            'state_name': 'State',
+            'county_name': 'County'
+        },
         title=f"Election Results - {zoom_level.title()} Level"
     )
     
@@ -187,7 +201,16 @@ def update_selectors(zoom_level):
         if states_path.exists():
             state_dirs = [d.name for d in states_path.iterdir() if d.is_dir()]
         
-        state_options = [{'label': f'State {s}', 'value': s} for s in sorted(state_dirs)]
+        # Get state names from the state boundaries file
+        try:
+            states_gdf = gpd.read_file('data/states/state_boundaries.geojson')
+            if 'state_name' in states_gdf.columns:
+                state_lookup = dict(zip(states_gdf['state_fips'], states_gdf['state_name']))
+                state_options = [{'label': state_lookup.get(s, f'State {s}'), 'value': s} for s in sorted(state_dirs)]
+            else:
+                state_options = [{'label': f'State {s}', 'value': s} for s in sorted(state_dirs)]
+        except:
+            state_options = [{'label': f'State {s}', 'value': s} for s in sorted(state_dirs)]
         state_disabled = False
     else:
         state_options = []
@@ -217,7 +240,19 @@ def update_county_options(selected_state, zoom_level):
         if precincts_path.exists():
             county_files = list(precincts_path.glob('*_precincts.geojson'))
             counties = [f.stem.replace('_precincts', '') for f in county_files]
-            county_options = [{'label': f'County {c[2:]}', 'value': c[2:]} for c in sorted(counties)]
+            
+            # Try to get county names from the counties file
+            try:
+                counties_file = f'data/states/by_state/{selected_state}/counties_{selected_state}.geojson'
+                counties_gdf = gpd.read_file(counties_file)
+                if 'county_name' in counties_gdf.columns and 'county_fips' in counties_gdf.columns:
+                    county_lookup = dict(zip(counties_gdf['county_fips'], counties_gdf['county_name']))
+                    county_options = [{'label': county_lookup.get(c, f'County {c[2:]}'), 'value': c[2:]} for c in sorted(counties)]
+                else:
+                    county_options = [{'label': f'County {c[2:]}', 'value': c[2:]} for c in sorted(counties)]
+            except:
+                county_options = [{'label': f'County {c[2:]}', 'value': c[2:]} for c in sorted(counties)]
+            
             return county_options
     
     return []
