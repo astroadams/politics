@@ -57,6 +57,29 @@ def gen_state_trend_plot(radio, hover_data):
     layout = go.Layout(hovermode='closest', xaxis={"title":"Year"}, yaxis={"title":radio, "range":[-40,40], "tickvals":[-40,-20,0,20,40], "ticktext":["R+40","R+20","Even","D+20","D+40"]})
     #layout = go.Layout(yaxis={"range": [-40,40]})
     return {"data" : data, "layout" : layout}
+def generate_state_trend_plot(radio, hover_data):
+    try:
+        state = hover_data['points'][0]['location']
+    except:
+        state = 'CA'
+    data = []
+    for s in states:
+        dfs = df[df['state'] == s]
+        dfs.sort_values(by='year', inplace=True)
+        if state == s:
+            opacity = 1
+        else:
+            opacity = 0.2
+        trace = go.Scatter(x=dfs['year'], y=dfs[radio], mode='lines', name=s, opacity=opacity)
+
+        data.append(trace)
+
+    layout = go.Layout(
+        hovermode='closest',
+        xaxis={'title': 'Year'},
+        yaxis={'title': radio}
+    )
+    return {'data': data, 'layout': layout}
 
 
 def alternate2_gen_state_trend_plot():
@@ -137,18 +160,19 @@ pvi_plot = False
 plot_state_trend = True
 
 if prep:
-    df = pd.read_csv('1976-2020-president.csv')
-    ev_df = pd.read_csv('electoral_vote_apportionment.csv')
+    df = pd.read_csv('data/1976-2020-president.csv')
+    ev_df = pd.read_csv('data/electoral_vote_apportionment.csv')
     # state, code, %margin D, nD, nR, nT
     
     states = df['state_po'].unique()
     years = df['year'].unique()
     
-    f = open('margins.csv','w')
+    f = open('data/margins.csv','w')
     f.write('year,state,electoral_votes,Margin of Victory,Margin of Victory text,Partisan Lean,Partisan Lean text\n')
     for year in years:
         dfy = df[df['year']==year]
-        dtotal = dfy[dfy['party_simplified'].str.contains('DEMOCRAT').ffill(0)]['candidatevotes'].sum()
+        #dtotal = dfy[dfy['party_simplified'].str.contains('DEMOCRAT').ffill(0)]['candidatevotes'].sum()
+        dtotal = dfy[dfy['party_simplified'].str.contains('DEMOCRAT')]['candidatevotes'].sum()
         rtotal = dfy[dfy['party_simplified']=='REPUBLICAN']['candidatevotes'].sum()
         total = dfy['candidatevotes'].sum()
         national_margin = (dtotal/total - rtotal/total) * 100
@@ -178,7 +202,7 @@ if prep:
 if pvi_plot:
     import matplotlib.pyplot as plt
     from matplotlib.colors import Normalize
-    df = pd.read_csv('margins.csv')
+    df = pd.read_csv('data/margins.csv')
     years = df['year'].unique()
     norm = Normalize(vmin=min(years), vmax=max(years))
     cm = plt.cm.get_cmap('Greens')
@@ -204,7 +228,7 @@ if pvi_plot:
 
 if plot_state_trend:
     import matplotlib.pyplot as plt
-    df = pd.read_csv('margins.csv')
+    df = pd.read_csv('data/margins.csv')
     states = df['state'].unique()
     plt.figure()
     for state in states:
@@ -228,7 +252,7 @@ if plot:
     app = dash.Dash(__name__)
     server = app.server
     
-    df = pd.read_csv('margins.csv')
+    df = pd.read_csv('data/margins.csv')
     years = df['year'].unique()
     states = df['state'].unique()
 
@@ -328,4 +352,6 @@ if plot:
                 
 if __name__ == '__main__' and plot == True:
     app.run_server(debug=True)
+    
+
     
