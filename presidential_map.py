@@ -154,7 +154,7 @@ def gen_map(year, radio):
     return figure
 
 
-prep = True
+prep = False
 plot = True
 pvi_plot = False
 plot_state_trend = True
@@ -256,7 +256,7 @@ if plot:
     years = df['year'].unique()
     states = df['state'].unique()
 
-    year = 2020
+    year = 2024
     radio = 'Partisan Lean'
     
     app.layout = html.Div(
