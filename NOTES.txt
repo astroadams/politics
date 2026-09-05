@@ -1,0 +1,6 @@
+https://dash.plotly.com/deployment
+https://dash.plotly.com/interactive-graphing
+
+https://electionlab.mit.edu/data
+
+https://www.census.gov/library/publications/2011/compendia/usa-counties-2011.html

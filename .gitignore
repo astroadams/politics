@@ -1,0 +1,37 @@
+# Python cache and environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.env.*
+.venv/
+venv/
+
+# Editors/OS
+.vscode/
+*.code-workspace
+.DS_Store
+
+# Generated artifacts
+*.pdf
+
+# Vector tiles and databases
+tiles/
+*.mbtiles
+
+# Large data artifacts (keep raw small CSVs tracked)
+# Precinct- and county-level files can be very large
+data/precincts-with-results.geojson
+data/**/*-precinct-*.tab
+data/**/*-precinct-*.csv
+data/**/precincts/**/*.geojson
+data/states/by_state/*/counties_*.geojson
+
+# Shapefile bundles
+data/**/*.shp
+data/**/*.dbf
+data/**/*.shx
+data/**/*.prj
+data/**/*.cpg
